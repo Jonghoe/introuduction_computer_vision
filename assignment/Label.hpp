@@ -2,7 +2,7 @@
 #include<opencv.hpp>
 class Label {
 public:
-	explicit Label(int _p = 0, int _l = 0);
+	explicit Label(int _p , int _l);
 	void setCorners(int x, int y);
 	void setCorner(int x, int y, int i);
 	cv::Point getCorner(int i);
