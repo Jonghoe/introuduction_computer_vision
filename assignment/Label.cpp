@@ -18,21 +18,28 @@ void Label::setCorners(int x, int y)
 	if (x <= corners[0].x) {
 		corners[0].x = x;
 		corners[0].y = y;
+		bound[0] = x;
 	}
-	if (x >= corners[1].x) {
+	else if (x >= corners[1].x) {
 		corners[1].x = x;
 		corners[1].y = y;
+		bound[1] = x;
 	}
-	if (y <= corners[2].y) {
+	else if (y <= corners[2].y) {
 		corners[2].x = x;
 		corners[2].y = y;
+		bound[2] = y;
 	}
-	if (y >= corners[3].y) {
+	else if (y >= corners[3].y) {
 		corners[3].x = x;
 		corners[3].y = y;
+		bound[3] = y;
 	}
 }
-
+void Label::setCorner(cv::Point pt, int i)
+{
+	setCorner(pt.x, pt.y, i);
+}
 void Label::setCorner(int x, int y, int i)
 {
 	if (i >= 4)
@@ -44,6 +51,17 @@ void Label::setCorner(int x, int y, int i)
 cv::Point Label::getCorner(int i)
 {
 	return corners[i];
+}
+
+Label & Label::operator=(Label & input)
+{
+	for (int i = 0; i < 4; ++i) {
+		this->bound[i] = input.bound[i];
+		this->corners[i] = input.corners[i];
+	}
+	this->labelNum = input.labelNum;
+	this->pixelNum = input.pixelNum;
+	return *this;
 }
 
 bool bigPixel(const Label& lA, const Label& lB)
