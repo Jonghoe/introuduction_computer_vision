@@ -5,6 +5,7 @@ using namespace std;
 using namespace cv;
 class LabelFactory {
 private:
+	static void MakeLabelNet(vector<set<int>>& equivalanceTable, vector<int>& net,int idx, int j);
 	static void MakeLabelNet(vector<set<int>>& equivalanceTable, set<int>& net, int j);
 	static void MakeLabelIdx(vector<int>& labelIdx, vector<set<int>>& equivalanceTable);
 	static void MakeLabel(const Mat& labelImg, vector<int> labelIdx, vector<Label>& labels);

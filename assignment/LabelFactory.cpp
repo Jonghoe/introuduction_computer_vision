@@ -11,6 +11,26 @@ void LabelFactory::MakeLabelNet(vector<set<int>>& equivalanceTable, set<int>& ne
 	}
 }
 
+void LabelFactory::MakeLabelNet(vector<set<int>>& equivalanceTable, vector<int>& labelIDX,int idx, int id)
+{
+
+	if (labelIDX[idx] != -1)
+		return;
+	labelIDX[idx] = id;
+	for (auto it = equivalanceTable[idx].begin(); it != equivalanceTable[idx].end(); ++it) {
+		MakeLabelNet(equivalanceTable, labelIDX, *it, id);
+	}
+}
+//
+//void LabelFactory::MakeLabelIdx(vector<int>& labelIdx, vector<set<int>>& equivalanceTable)
+//{	
+//	for (int i = 0; i < equivalanceTable.size(); ++i) {
+//		if (labelIdx[i] == -1) {
+//			MakeLabelNet(equivalanceTable, labelIdx, i, i);
+//		}
+//	}
+//	return;
+//}
 void LabelFactory::MakeLabelIdx(vector<int>& labelIdx, vector<set<int>>& equivalanceTable)
 {
 	vector<set<int>> net;
@@ -94,17 +114,20 @@ int LabelFactory::MakeEquivalanceTable(const Mat& input, Mat& labelImg, vector<s
 vector<Label> LabelFactory::findLabel(const Mat& input)
 {
 	Mat labelImg = Mat::zeros(input.size(), CV_32S);
-	vector<set<int>> equivalanceTable(2);
-
+	Mat edge;
+	Canny(input, edge, 200, 255);
+	Mat mask = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3), cv::Point(1, 1));
+	dilate(edge, edge, mask, cv::Point(-1, -1), 3);
+	
+	vector<set<int>> equivalanceTable(2); 
 	//equivalance table 생성 및 레이블링
-	int labelNum = LabelFactory::MakeEquivalanceTable(input, labelImg, equivalanceTable);
+	int labelNum = MakeEquivalanceTable(edge, labelImg, equivalanceTable);
+	vector<int> labelIdx(labelNum,-1);
 
-	vector<int> labelIdx(labelNum);
-
-	LabelFactory::MakeLabelIdx(labelIdx, equivalanceTable);
+	MakeLabelIdx(labelIdx, equivalanceTable);
 
 	vector<Label> labels;
-	LabelFactory::MakeLabel(labelImg, labelIdx, labels);
+	MakeLabel(labelImg, labelIdx, labels);
 
 	return labels;
 }
