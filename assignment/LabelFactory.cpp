@@ -1,15 +1,5 @@
 #include "LabelFactory.hpp"
 
-void LabelFactory::MakeLabelNet(vector<set<int>>& equivalanceTable, set<int>& net, int j)
-{
-	net.insert(j);
-	for (auto it = equivalanceTable[j].begin(); it != equivalanceTable[j].end(); ++it) {
-		if (net.find(*it) == net.end())
-		{
-			MakeLabelNet(equivalanceTable, net, *it);
-		}
-	}
-}
 
 void LabelFactory::MakeLabelNet(vector<set<int>>& equivalanceTable, vector<int>& labelIDX,int idx, int id)
 {
@@ -21,36 +11,17 @@ void LabelFactory::MakeLabelNet(vector<set<int>>& equivalanceTable, vector<int>&
 		MakeLabelNet(equivalanceTable, labelIDX, *it, id);
 	}
 }
-//
-//void LabelFactory::MakeLabelIdx(vector<int>& labelIdx, vector<set<int>>& equivalanceTable)
-//{	
-//	for (int i = 0; i < equivalanceTable.size(); ++i) {
-//		if (labelIdx[i] == -1) {
-//			MakeLabelNet(equivalanceTable, labelIdx, i, i);
-//		}
-//	}
-//	return;
-//}
+
 void LabelFactory::MakeLabelIdx(vector<int>& labelIdx, vector<set<int>>& equivalanceTable)
-{
-	vector<set<int>> net;
+{	
+	int labelID = 0;
 	for (int i = 0; i < equivalanceTable.size(); ++i) {
-		set<int>::iterator it;
-		int j;
-
-		for (j = 0; j < net.size(); ++j) {
-			it = find(net[j].begin(), net[j].end(), i);
-			if (it != net[j].end())
-				break;
+		if (labelIdx[i] == -1) {
+			MakeLabelNet(equivalanceTable, labelIdx, i, labelID++);
 		}
-		if (j == net.size()) {
-			net.push_back(set<int>());
-			MakeLabelNet(equivalanceTable, net.back(), j);
-		}
-		labelIdx[i] = j;
 	}
+	return;
 }
-
 void LabelFactory::MakeLabel(const Mat& labelImg, vector<int> labelIdx, vector<Label>& labels)
 {
 	for (int r = 0; r < labelImg.rows; ++r) {
@@ -115,13 +86,10 @@ vector<Label> LabelFactory::findLabel(const Mat& input)
 {
 	Mat labelImg = Mat::zeros(input.size(), CV_32S);
 	Mat edge;
-	Canny(input, edge, 200, 255);
-	Mat mask = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3), cv::Point(1, 1));
-	dilate(edge, edge, mask, cv::Point(-1, -1), 3);
 	
 	vector<set<int>> equivalanceTable(2); 
 	//equivalance table 생성 및 레이블링
-	int labelNum = MakeEquivalanceTable(edge, labelImg, equivalanceTable);
+	int labelNum = MakeEquivalanceTable(input, labelImg, equivalanceTable);
 	vector<int> labelIdx(labelNum,-1);
 
 	MakeLabelIdx(labelIdx, equivalanceTable);
