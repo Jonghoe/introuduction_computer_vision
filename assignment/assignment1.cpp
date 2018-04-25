@@ -26,12 +26,9 @@ Point rotatePoint(const Point& pt, const Point& center, double angle)
 	trans.ptr<double>(0)[1] = -sin(angle);
 	trans.ptr<double>(1)[0] = sin(angle);
 	trans.ptr<double>(1)[1] = cos(angle);
-	cout << trans << endl;
-	cout << cos(angle) << " " << sin(angle) << endl;
 	Mat rotate = Mat::zeros(Size(2, 1), CV_64F);
 	rotate.ptr<double>(0)[0] = pt.x - center.x;
 	rotate.ptr<double>(0)[1] = pt.y -center.y;
-	cout << sin(30 * CV_PI / 180)<<endl;
 	rotate *= trans;
 
 	Point retV;
@@ -53,7 +50,6 @@ void rotateImg(const Mat& input, Mat& output, Label& labels, Mat* bar)
 	double distanceA = distance(center, middle);
 	double distanceB = distance(center, cross);
 	int angle = -(acos((double)distanceA/ (double)distanceB) * 180.0 / CV_PI);
-	cout << angle << " "<<distanceA<<" "<<distanceB<<endl;
 
 	if (angle != 0.0) {					// 90도가 아닌 경우
 		Mat matRotation = getRotationMatrix2D(Point(input.cols / 2, input.rows / 2),angle, 1);
@@ -100,7 +96,6 @@ void rotateImg(const Mat& input, Mat& output, Label& labels, Mat* bar)
 					++count[1];
 			}
 		}
-		cout << count[0] << " " << count[1] << endl;
 		if (count[0] < count[1]) {
 			Mat matRotation = getRotationMatrix2D(Point(input.cols / 2, input.rows / 2), 180, 1);
 			warpAffine(output, output, matRotation, input.size());
@@ -115,20 +110,19 @@ int main()
 	Mat input = imread("data\\lotto_gray.jpg", IMREAD_COLOR);
 	Mat rotto;
 	vector<Label> labels;
-	cout << "A" << endl;
 	// 이미지 사이즈 조정
 	Mat resizeImg;
 	Size rSize = Size(input.cols / 1, input.rows / 1);
 	resize(input, input, rSize);
 	rSize = Size(input.cols / 1, input.rows / 1);
 	resize(input, resizeImg, rSize);
-	cout << "B" << endl;
+	cout << "이미지 사이즈 조정" << endl;
 	
 	// 이미지 이진화
 	Mat thresholdImg;
 	cvtColor(resizeImg, thresholdImg, CV_RGB2GRAY);
 	threshold(thresholdImg, thresholdImg, 200, 255, CV_THRESH_BINARY);	
-	cout << "C" << endl;
+	cout << "이미지 이진화" << endl;
 
 	// 로또 종이 영역 추출
 	Mat cornerImg;
@@ -137,14 +131,15 @@ int main()
 	labels = LabelFactory::findLabel(thresholdImg);
 	sort(labels.begin(), labels.end(), bigPixel);
 	end = clock();	
-	cout << "D" << end - beg << endl;
+	cout << "종이 영역 추출" << end - beg << endl;
 
 	// 이미지 회전
 	Mat rotatedImg;
 	beg = clock();
 	rotateImg(input, rotatedImg, labels[0], &thresholdImg);
 	imshow("rotated", rotatedImg);
-	cout << "D" << end - beg << endl;
+	end = clock();
+	cout << "이미지 회전" << end - beg << endl;
 
 	// 숫자 영역 추출
 	// projection
@@ -207,19 +202,105 @@ int main()
 			prevIsBlank = false;
 		}
 	}
-	
+	Mat location = projection;
 	for (int i = 6; i < 11; ++i) {
-		line(projection, Point(0, colBound[i].first), Point(projection.cols - 1, colBound[i].first), Scalar(125), 1);
-		line(projection, Point(0, colBound[i].second), Point(projection.cols - 1, colBound[i].second), Scalar(125), 1);
+		line(location, Point(0, colBound[i].first), Point(location.cols - 1, colBound[i].first), Scalar(125), 1);
+		line(location, Point(0, colBound[i].second), Point(location.cols - 1, colBound[i].second), Scalar(125), 1);
 	}
-	for (int i = 3; i < rowBound.size(); ++i) {
-		line(projection, Point(rowBound[i].first, 0), Point(rowBound[i].first, projection.rows), Scalar(125), 1);
-		line(projection, Point(rowBound[i].second, 0), Point(rowBound[i].second, projection.rows), Scalar(125), 1);
+	for (int i = 3; i <15; ++i) {
+		line(location, Point(rowBound[i].first, 0), Point(rowBound[i].first, location.rows), Scalar(125), 1);
+		line(location, Point(rowBound[i].second, 0), Point(rowBound[i].second, location.rows), Scalar(125), 1);
 	}
-	imshow("projection", projection);
+	imshow("projection", location);
 	// 숫자 값 학습
- 
+	Mat numbers[60];
+	int count = 0;
+	
+	// 숫자 이미지 추출
+	for (int r = 3; r < 15; ++r) {
+		for (int c = 6; c < 11; ++c) {
+			projection(Rect(Point(rowBound[r].first, colBound[c].first), Point(rowBound[r].first + 20, colBound[c].first+22))).copyTo(numbers[count++]);
+		}
+	}
 
 
+	for (int i = 0; i < 60; ++i)
+		resize(numbers[i], numbers[i], Size(numbers[i].cols / 2, numbers[i].rows / 2));
+
+	const int numberAnswer[60] = {
+		1,0,0,0,0,5,1,4,1,2,
+		1,0,0,0,1,8,7,5,2,1,
+		2,0,1,1,2,0,8,4,2,0,
+		2,1,2,1,2,6,6,0,5,1,
+		3,2,2,2,3,7,3,6,8,1,
+		4,2,4,3,3,4,8,4,6,8 
+	};
+		
+	double weightArray[4][110];
+	const double mue = 0.5;
+	srand(time(NULL));;
+	for (int r = 0; r < 4; ++r) {
+		for (int c = 0; c < 110; ++c) {
+			weightArray[r][c] = rand() / (double)RAND_MAX;
+		}
+	}
+	int findAnswer[60];
+	bool check = true;
+	count = 0;
+	while (check) {
+		for (int i = 0; i < 60; ++i) {
+			findAnswer[i] = 0;
+			double retBits[4] = { 0,0,0,0 };
+			for (int r = 0; r < 4; ++r) {
+				for (int c = 0; c < 110; ++c) {
+					retBits[r] += (numbers[i].data[c] == 0) ? weightArray[r][c] : 0;
+				}
+			}
+			for (int r = 0; r < 4; ++r) {
+				if (retBits[r] >= 0.0)
+					retBits[r] = 1.0;
+				else
+					retBits[r] = 0;
+			}
+			
+			for (int r = 0; r < 4; ++r) {
+				findAnswer[i] += (((int)retBits[r]) << r);
+			}
+
+			if (findAnswer[i] != numberAnswer[i]){
+				check = false;
+				int bit = 1;
+				for (int r = 0; r < 4; ++r) {
+					if ((int)retBits[r] != ((numberAnswer[i]&bit)>>r)) {
+						double weight;
+						int dt, yt;
+						dt = ((numberAnswer[i] & bit) >> r) == 1 ? 1 : -1;
+						yt = retBits[r] == 1 ? 1 : -1;
+						weight = dt - yt;
+						if(weight!=0)
+						for (int c = 0; c < 110; ++c) {
+							weightArray[r][c] += weight*mue*(numbers[i].data[c] == 0 ? 1 : 0);
+						}
+					}
+					bit <<= 1;
+				}
+			}
+		}
+		if (check)
+			break;
+		check = true;
+		cout << count << "번째 결과 값: " ;
+		for (int i = 0; i < 60; ++i) {
+			cout << findAnswer[i] <<" ";
+		}
+		cout << endl;
+		cout << count << "결과 예상 값: ";
+		for (int i = 0; i < 60; ++i) {
+			cout << numberAnswer[i] << " ";
+		}
+		cout << endl<<endl;
+		++count;
+	}
+	
 	while (waitKey() != 27);
 }
